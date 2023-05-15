@@ -1,0 +1,3 @@
+[submodule "SOFT"]
+	path = SOFT
+	url = https://github.com/Stedll/SOFT.git
