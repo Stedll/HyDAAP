@@ -27,7 +27,6 @@ def gradient_descent(w_init, vert_off, dem_path, data_path, bandwidth, max_itera
         print("iteration:", i)
         gradient = np.asarray(function_gradient(w, vert_off, dem_path, bandwidth, data_path, old_corr))
         delta_w = learning_rate * gradient * delta + momentum * delta_w
-        print(delta_w)
         w = w + delta_w
         old_corr = function_eval(w, vert_off, dem_path, bandwidth, data_path)
         # store the history of w and f
@@ -63,7 +62,6 @@ def function_eval(position, vert_off, dem_path, bandwidth, data_path, modifier='
     easting = position[0]
     northing = position[1]
     
-    print("evaluating correlation at", easting, northing)
     try:
         dem_skyline_360, dem_parameters = DF.extract_skyline_from_dem(dem_path, easting, northing, vert_off, 1200, 30000)
     except ValueError:
@@ -72,14 +70,13 @@ def function_eval(position, vert_off, dem_path, bandwidth, data_path, modifier='
 
     signal_path = SF.get_coeffs(dem_skyline_360, os.path.join(data_path, "tmp", "signal"+modifier+".dat"), bandwidth)
     corr = os.popen(" ".join(["../SOFT/bin/arss_code_single ", signal_path, os.path.join(data_path, "tmp", "pattern.dat"), str(bandwidth), str(bandwidth), str(bandwidth)])).read().split(',')[1]
-    print("correlation", corr)
     os.remove(signal_path)
 
     return float(corr)
 
 def main():
     print("code not yet implemented for standalone functionalities")
-
+    quit()
     start = time.time()
     data_path = os.path.join("..", "data")
     img_path = os.path.join(data_path, "img", "hyp", "labwindow_06_el5_BSQ.hdr")

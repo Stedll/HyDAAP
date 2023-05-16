@@ -12,7 +12,7 @@ os.chdir(os.path.dirname(__file__))
 import dem_functions as DF
 import image_functions as IF
 import spherical_functions as SF
-#import position_optimizer as PO
+import position_optimizer as PO
 import json_writer as JW
 import dem_reprojector as DR
 import geotiff_writer as GW
@@ -22,37 +22,45 @@ def main():
     print("code not yet implemented for standalone functionalities")
 
     start = time.time()
+
+    # input data
     data_path = os.path.join("..", "data")
     img_path = os.path.join(data_path, "img", "hyp", "labwindow_06_el5_BSQ.hdr")
     acq_path = os.path.join(data_path, "img", "hyp", "labwindow_06_el5.azg")
     dem_path = [os.path.join(data_path, "dem", "w50565_s10/w50565_s10.tif"), os.path.join(data_path, "dem", "w51065_s10/w51065_s10.tif")]
 
-    name_of_run = "test"
+    name_of_run = "el5"
+    os.makedirs(os.path.join(data_path, "out", name_of_run), exist_ok=True)
 
+    # hyperspectral camera FOV
     vFOV = np.deg2rad(20)
     
+    # positioning
     lat = None
     lon = None
     #northing, easting, _, _ = utm.from_latlon(lat, lon)
     easting = 666229.654
     northing = 5103761.858
 
+    # vertical offset of platform with respect to DEM height
     vert_off = 2
 
+    # control switches
     visualization = True
     dem = True
     hyperspectral = True
     optimization = True
-    projection = False
+    projection = True
     correlation = True
     mapping=True
-    writer=False
+    writer=True
 
-    # control flow
+    # control flow variables
     b_dem_skyline = False
     b_hyp_skyline = False
     b_correlation = False
-
+    
+    
     if dem:
         if len(dem_path)>1:
             os.makedirs(os.path.join(data_path, "dem", "merged"), exist_ok=True)
@@ -71,6 +79,7 @@ def main():
 
         b_dem_skyline = True
         if visualization:
+            cv2.imwrite(os.path.join(data_path, "out", name_of_run, "dem_skyline.png"), dem_skyline_360)
             cv2.imshow("dem skyline", dem_skyline_360)
             cv2.waitKey(1)
 
@@ -81,14 +90,31 @@ def main():
         
         b_hyp_skyline = True
         if visualization:
+            cv2.imwrite(os.path.join(data_path, "out", name_of_run, "spectral_skyline.png"), spectral_skyline_360)
             cv2.imshow("spectral skyline", spectral_skyline_360)
             cv2.waitKey(1)
 
     if b_hyp_skyline and b_dem_skyline and correlation:
+        if optimization:
+            max_iterations = 10
+            threshold = 5
+            learning_rate = 1
+            momentum = 0.1
+            bandwidth = 300
+            print("calculating spherical coefficients")
+            pattern_path = SF.get_coeffs(spectral_skyline_360, os.path.join(data_path, "tmp", "pattern.dat"), bandwidth)
+            print("done")
+            print("optimizing")
+            w_history, f_history = PO.gradient_descent([easting, northing], vert_off, dem_path, data_path, bandwidth, max_iterations, threshold, learning_rate, momentum)
+            print("done")
+
+            easting = w_history(np.argmax(f_history))[0]
+            northing = w_history(np.argmax(f_history))[1]
+        
         bandwidth = 400
         print("calculating spherical coefficients")
-        signal_path = SF.get_coeffs(dem_skyline_360, os.path.join(data_path, "tmp", "signal.dat"), bandwidth)
-        pattern_path = SF.get_coeffs(spectral_skyline_360, os.path.join(data_path, "tmp", "pattern.dat"), bandwidth)
+        signal_path = SF.get_coeffs(dem_skyline_360, os.path.join(data_path, "out", name_of_run, "signal.dat"), bandwidth)
+        pattern_path = SF.get_coeffs(spectral_skyline_360, os.path.join(data_path, "out", name_of_run, "pattern.dat"), bandwidth)
         print("done")
 
         print("spherical cross-correlation")
@@ -109,12 +135,13 @@ def main():
             dem_skyline_360_filterd[spectral_skyline_360<=30] = dem_skyline_360_filterd[spectral_skyline_360<=30]
             img = cv2.merge((dem_skyline_360_filterd, dem_skyline_360_filterd + spectral_skyline_360, dem_skyline_360_filterd + photo_rotated))
 
+            cv2.imwrite(os.path.join(data_path, "out", name_of_run, "spherical_matching.png"), img)
             cv2.imshow("spherical matching", cv2.resize(img, None, fx=0.5, fy=0.5))
             cv2.waitKey(1)
 
     if projection and b_correlation:
         print("creating matlab input files in:")
-        matlab_out_dir = JW.create_input(dem_path, img_path, os.path.join(data_path, "tmp"), name_of_run, ypr[0]+0.5, ypr[1], -ypr[2], FOVs[0], FOVs[1], size[0], size[1], dem_parameters, easting, northing, str(vert_off))
+        matlab_out_dir = JW.create_input(dem_path, img_path, os.path.join(data_path, "out", name_of_run), name_of_run, ypr[0]+0.5, ypr[1], -ypr[2], FOVs[0], FOVs[1], size[0], size[1], dem_parameters, easting, northing, str(vert_off))
         print(matlab_out_dir)
         print("done")
 
@@ -143,13 +170,13 @@ def main():
             for center in list(zip(correspondences[3],correspondences[2])):
                 bands = cv2.circle(bands, center, 2, (0,0,255), 2)
                 
-            cv2.imwrite("projection.png", cv2.resize(bands, None, fx=0.5, fy=1))
+            cv2.imwrite(os.path.join(data_path, "out", name_of_run, "projection.png"), cv2.resize(bands, None, fx=0.5, fy=1))
             cv2.imshow("test", cv2.resize(bands, None, fx=0.5, fy=1))
             cv2.waitKey(0)
 
     if writer:
         print("writing GeoTIFF file")
-        GW.writer2(correspondences, img_hyp, limit, dem_path, dem_parameters)
+        GW.writer2(correspondences, img_hyp, limit, dem_path, dem_parameters, name_of_run)
         print("done")
 
     end = time.time()
