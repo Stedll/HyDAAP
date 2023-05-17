@@ -1,5 +1,5 @@
 # **Hy**perspectral to **D**em **A**utomatic **A**lignment and **P**rojection
-A general overview of the project is available here [here](report.pdf)
+A general overview of the project is available here [here](HyDAAP.pdf)
 
 ## Related projects
 ### georef_webcam
