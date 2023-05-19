@@ -28,10 +28,11 @@ def writer2(mapping, img_hyp, limit, dem_path, dem_parameters, name_of_run): # s
     import cv2
     import numpy as np
     import rasterio
+    import os
 
     with rasterio.Env(GDAL_CACHEMAX=60000000000) as env:
         raster = rasterio.open(dem_path)
-        with rasterio.open("../data/out/output_"+name_of_run+".tif", 'w', 'GTiff', dem_parameters[0], dem_parameters[1], img_hyp.shape[-1]+1, raster.crs, raster.transform, rasterio.float32, dem_parameters[-1]) as outfile:
+        with rasterio.open(os.path.join('..', 'data', 'out', name_of_run, 'output_'+name_of_run+'.tif'), 'w', 'GTiff', dem_parameters[0], dem_parameters[1], img_hyp.shape[-1]+1, raster.crs, raster.transform, rasterio.float32, dem_parameters[-1]) as outfile:
             outfile.write(raster.read(1), 1)
             for i in range(0, img_hyp.shape[-1]):
                 print(i+1, "/", img_hyp.shape[-1])

@@ -108,8 +108,8 @@ def main():
             w_history, f_history = PO.gradient_descent([easting, northing], vert_off, dem_path, data_path, bandwidth, max_iterations, threshold, learning_rate, momentum)
             print("done")
 
-            easting = w_history(np.argmax(f_history))[0]
-            northing = w_history(np.argmax(f_history))[1]
+            easting = w_history[np.argmax(f_history)][0]
+            northing = w_history[np.argmax(f_history)][1]
         
         bandwidth = 400
         print("calculating spherical coefficients")
@@ -172,7 +172,7 @@ def main():
                 
             cv2.imwrite(os.path.join(data_path, "out", name_of_run, "projection.png"), cv2.resize(bands, None, fx=0.5, fy=1))
             cv2.imshow("test", cv2.resize(bands, None, fx=0.5, fy=1))
-            cv2.waitKey(0)
+            cv2.waitKey(1)
 
     if writer:
         print("writing GeoTIFF file")
@@ -181,6 +181,9 @@ def main():
 
     end = time.time()
     print("execution time:", end-start)
+
+    if visualization:
+        cv2.waitKey(0)
 
 if __name__ == '__main__':
     main()
